@@ -47,8 +47,11 @@ start_time = time.time()
 previous_count = -1
 current_swara_name = "Silence"
 current_tint = (100, 50, 20)
+is_muted = False  # Sound control state variable
 
-print("Hand Gesture Swara Player running. Press 'q' to quit.")
+print(
+    "Hand Gesture Swara Player running. Press 'm' to Mute/Unmute, 'q' to quit."
+)
 
 while cap.isOpened():
   success, frame = cap.read()
@@ -101,12 +104,13 @@ while cap.isOpened():
         px, py = int(lm.x * w), int(lm.y * h)
         cv2.circle(frame, (px, py), 5, (255, 200, 0), -1)
 
-  # 5. Audio Trigger & State Logic
+  # 5. Audio Trigger & State Logic (respects mute state)
   if total_finger_count != previous_count:
     if total_finger_count in swara_config:
       name, path, tint = swara_config[total_finger_count]
-      pygame.mixer.music.load(path)
-      pygame.mixer.music.play()
+      if not is_muted:
+        pygame.mixer.music.load(path)
+        pygame.mixer.music.play()
       current_swara_name = f"Swara: {name}"
       current_tint = tint
     else:
@@ -114,10 +118,10 @@ while cap.isOpened():
       current_tint = (100, 50, 20)
     previous_count = total_finger_count
 
-  # 6. Apply Dynamic Blue Screen Tint
+  # 6. Apply Dynamic Blue Screen Tint (dimmed if muted)
   overlay = frame.copy()
   cv2.rectangle(overlay, (0, 0), (w, h), current_tint, -1)
-  alpha = 0.15
+  alpha = 0.08 if is_muted else 0.15
   cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
 
   # --- BLUE THEME CUSTOM UI OVERLAYS ---
@@ -136,7 +140,7 @@ while cap.isOpened():
       cv2.LINE_AA,
   )
 
-  # Middle Info Box
+  # Middle Info Box (Fingers, Swara, and Mute Status)
   cv2.rectangle(frame, (20, 85), (w - 20, 150), (40, 20, 10), -1)
   cv2.rectangle(frame, (20, 85), (w - 20, 150), (255, 150, 50), 2)
   cv2.putText(
@@ -152,10 +156,24 @@ while cap.isOpened():
   cv2.putText(
       frame,
       current_swara_name,
-      (w - 260, 128),
+      (w - 480, 128),
       cv2.FONT_HERSHEY_SIMPLEX,
       0.8,
       (255, 255, 0),
+      2,
+      cv2.LINE_AA,
+  )
+
+  # Display Mute/Unmute Indicator
+  mute_text = "MUTED (Press M)" if is_muted else "AUDIO ON"
+  mute_color = (0, 0, 255) if is_muted else (0, 255, 0)
+  cv2.putText(
+      frame,
+      mute_text,
+      (w - 230, 128),
+      cv2.FONT_HERSHEY_SIMPLEX,
+      0.65,
+      mute_color,
       2,
       cv2.LINE_AA,
   )
@@ -177,9 +195,17 @@ while cap.isOpened():
   # 7. Display live feed
   cv2.imshow("Hand Gesture Swara Player - Blue Theme", frame)
 
-  # 8. Exit condition
-  if cv2.waitKey(1) & 0xFF == ord("q"):
+  # 8. Keyboard Controls ('q' to quit, 'm' to toggle mute)
+  key = cv2.waitKey(1) & 0xFF
+  if key == ord("q"):
     break
+  elif key == ord("m"):
+    is_muted = not is_muted
+    if is_muted:
+      pygame.mixer.music.stop()
+      print("Audio Muted")
+    else:
+      print("Audio Unmuted")
 
 # --- Cleanup ---
 cap.release()
