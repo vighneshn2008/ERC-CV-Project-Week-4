@@ -47,10 +47,13 @@ start_time = time.time()
 previous_count = -1
 current_swara_name = "Silence"
 current_tint = (100, 50, 20)
-is_muted = False  # Sound control state variable
+is_muted = False
+current_volume = 0.7  # Default volume at 70%
+pygame.mixer.music.set_volume(current_volume)
 
 print(
-    "Hand Gesture Swara Player running. Press 'm' to Mute/Unmute, 'q' to quit."
+    "Hand Gesture Swara Player running. Press '=' to Volume Up, '-' to Volume"
+    " Down, 'm' to Mute, 'q' to quit."
 )
 
 while cap.isOpened():
@@ -104,7 +107,7 @@ while cap.isOpened():
         px, py = int(lm.x * w), int(lm.y * h)
         cv2.circle(frame, (px, py), 5, (255, 200, 0), -1)
 
-  # 5. Audio Trigger & State Logic (respects mute state)
+  # 5. Audio Trigger & State Logic
   if total_finger_count != previous_count:
     if total_finger_count in swara_config:
       name, path, tint = swara_config[total_finger_count]
@@ -118,7 +121,7 @@ while cap.isOpened():
       current_tint = (100, 50, 20)
     previous_count = total_finger_count
 
-  # 6. Apply Dynamic Blue Screen Tint (dimmed if muted)
+  # 6. Apply Dynamic Blue Screen Tint
   overlay = frame.copy()
   cv2.rectangle(overlay, (0, 0), (w, h), current_tint, -1)
   alpha = 0.08 if is_muted else 0.15
@@ -140,7 +143,7 @@ while cap.isOpened():
       cv2.LINE_AA,
   )
 
-  # Middle Info Box (Fingers, Swara, and Mute Status)
+  # Middle Info Box (Fingers, Swara, Volume, and Mute Status)
   cv2.rectangle(frame, (20, 85), (w - 20, 150), (40, 20, 10), -1)
   cv2.rectangle(frame, (20, 85), (w - 20, 150), (255, 150, 50), 2)
   cv2.putText(
@@ -156,7 +159,7 @@ while cap.isOpened():
   cv2.putText(
       frame,
       current_swara_name,
-      (w - 480, 128),
+      (w - 530, 128),
       cv2.FONT_HERSHEY_SIMPLEX,
       0.8,
       (255, 255, 0),
@@ -164,16 +167,19 @@ while cap.isOpened():
       cv2.LINE_AA,
   )
 
-  # Display Mute/Unmute Indicator
-  mute_text = "MUTED (Press M)" if is_muted else "AUDIO ON"
-  mute_color = (0, 0, 255) if is_muted else (0, 255, 0)
+  # Display Volume Percentage & Mute Status
+  vol_percent = int(current_volume * 100)
+  status_text = (
+      "MUTED" if is_muted else f"Vol: {vol_percent}% (=/+ , -)"
+  )
+  status_color = (0, 0, 255) if is_muted else (0, 255, 0)
   cv2.putText(
       frame,
-      mute_text,
-      (w - 230, 128),
+      status_text,
+      (w - 300, 128),
       cv2.FONT_HERSHEY_SIMPLEX,
-      0.65,
-      mute_color,
+      0.6,
+      status_color,
       2,
       cv2.LINE_AA,
   )
@@ -195,17 +201,28 @@ while cap.isOpened():
   # 7. Display live feed
   cv2.imshow("Hand Gesture Swara Player - Blue Theme", frame)
 
-  # 8. Keyboard Controls ('q' to quit, 'm' to toggle mute)
+  # 8. Keyboard Controls ('q' to quit, 'm' to mute, '='/'+' to vol up, '-' to vol down)
   key = cv2.waitKey(1) & 0xFF
   if key == ord("q"):
     break
   elif key == ord("m"):
     is_muted = not is_muted
     if is_muted:
-      pygame.mixer.music.stop()
+      pygame.mixer.music.set_volume(0)
       print("Audio Muted")
     else:
-      print("Audio Unmuted")
+      pygame.mixer.music.set_volume(current_volume)
+      print(f"Audio Unmuted (Volume: {int(current_volume * 100)}%)")
+  elif key == ord("=") or key == ord("+"):
+    current_volume = min(1.0, current_volume + 0.1)
+    if not is_muted:
+      pygame.mixer.music.set_volume(current_volume)
+    print(f"Volume Up: {int(current_volume * 100)}%")
+  elif key == ord("-"):
+    current_volume = max(0.0, current_volume - 0.1)
+    if not is_muted:
+      pygame.mixer.music.set_volume(current_volume)
+    print(f"Volume Down: {int(current_volume * 100)}%")
 
 # --- Cleanup ---
 cap.release()
