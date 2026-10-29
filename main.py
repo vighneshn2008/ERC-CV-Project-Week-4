@@ -1,7 +1,6 @@
 import time
 import cv2
 import mediapipe as mp
-from mediapipe.tasks.python.vision import hand_landmarker
 
 # --- Configuration ---
 MODEL_PATH = "hand_landmarker.task"
@@ -24,7 +23,7 @@ if not cap.isOpened():
 
 start_time = time.time()
 
-print("Milestone 4 running. Press 'q' to quit.")
+print("Milestone 5 running. Press 'q' to quit.")
 
 while cap.isOpened():
   success, frame = cap.read()
@@ -46,16 +45,59 @@ while cap.isOpened():
   # 4. Detect hands
   result = landmarker.detect_for_video(mp_image, timestamp_ms)
 
-  # 5. Draw the skeleton on each detected hand
+  total_finger_count = 0
+
   if result.hand_landmarks:
-    for hand_landmarks in result.hand_landmarks:
-      # Convert normalized fractions (0 to 1) to actual pixel coordinates and draw circles on landmarks
+    for i, hand_landmarks in enumerate(result.hand_landmarks):
+      # Get handedness ("Left" or "Right")
+      label = result.handedness[i][0].category_name
+
+      hand_count = 0
+
+      # --- Thumb Logic ---
+      # Compare x-coordinate of tip (4) and IP joint (3).
+      # Direction depends on whether it's a left or right hand (mirrored feed check).
+      thumb_tip_x = hand_landmarks[4].x
+      thumb_joint_x = hand_landmarks[3].x
+
+      if label == "Right":
+        if thumb_tip_x < thumb_joint_x:
+          hand_count += 1
+      else:  # Left hand
+        if thumb_tip_x > thumb_joint_x:
+          hand_count += 1
+
+      # --- Four Fingers Logic (Index, Middle, Ring, Pinky) ---
+      # Tips: 8, 12, 16, 20 | Lower joints (PIP): 6, 10, 14, 18
+      finger_tips = [8, 12, 16, 20]
+      finger_pips = [6, 10, 14, 18]
+
+      for tip, pip in zip(finger_tips, finger_pips):
+        # y-axis points down, so a smaller y value means physically higher
+        if hand_landmarks[tip].y < hand_landmarks[pip].y:
+          hand_count += 1
+
+      total_finger_count += hand_count
+
+      # Draw hand landmarks on the display frame
       for lm in hand_landmarks:
         px, py = int(lm.x * w), int(lm.y * h)
-        cv2.circle(frame, (px, py), 5, (0, 0, 255), -1)  # Red dots for joints
+        cv2.circle(frame, (px, py), 4, (0, 255, 0), -1)
 
-  # 6. Display the live feed
-  cv2.imshow("Milestone 4 - Hand Skeleton", frame)
+  # 5. Display the total finger count on screen
+  cv2.putText(
+      frame,
+      f"Fingers: {total_finger_count}",
+      (30, 50),
+      cv2.FONT_HERSHEY_SIMPLEX,
+      1,
+      (0, 0, 255),
+      2,
+      cv2.LINE_AA,
+  )
+
+  # 6. Display live feed
+  cv2.imshow("Milestone 5 - Finger Counting", frame)
 
   # 7. Exit condition
   if cv2.waitKey(1) & 0xFF == ord("q"):
