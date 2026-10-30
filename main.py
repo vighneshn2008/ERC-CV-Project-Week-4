@@ -87,10 +87,10 @@ while cap.isOpened():
       thumb_tip_x = hand_landmarks[4].x
       thumb_joint_x = hand_landmarks[3].x
       if label == "Right":
-        if thumb_tip_x < thumb_joint_x:
+        if thumb_tip_x > thumb_joint_x:
           hand_count += 1
       else:
-        if thumb_tip_x > thumb_joint_x:
+        if thumb_tip_x < thumb_joint_x:
           hand_count += 1
 
       # Four Fingers Logic
