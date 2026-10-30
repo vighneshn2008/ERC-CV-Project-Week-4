@@ -48,7 +48,7 @@ previous_count = -1
 current_swara_name = "Silence"
 current_tint = (100, 50, 20)
 is_muted = False
-current_volume = 0.7  # Default volume at 70%
+current_volume = 0.8  # Default volume at 70%
 pygame.mixer.music.set_volume(current_volume)
 
 print(
@@ -159,7 +159,7 @@ while cap.isOpened():
   cv2.putText(
       frame,
       current_swara_name,
-      (w - 530, 128),
+      (w - 460, 128),
       cv2.FONT_HERSHEY_SIMPLEX,
       0.8,
       (255, 255, 0),
